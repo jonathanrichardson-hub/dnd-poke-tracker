@@ -12,7 +12,12 @@ export interface PokemonDefinition {
   baseHp: number;
   hpPerLevel: number;
   baseAc: number;
-  evolution?: { targetSpecies: string; level: number };
+  evolution?: {
+    targetSpecies: string;
+    level?: number;   // The ? makes level optional (for stone evolutions)
+    item?: string;    // The ? makes item optional (for level evolutions)
+    method?: string;  // Just in case you add trade/friendship evolutions later!
+  };
   moves: MoveDefinition[];
 }
 

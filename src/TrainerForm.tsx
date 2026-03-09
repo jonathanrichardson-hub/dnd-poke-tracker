@@ -1,11 +1,21 @@
 import { useState } from 'react';
 
-// NEW: We tell the form to expect a "save" function from the main app
-export default function TrainerForm({ onSave }: { onSave: (data: any) => void }) {
-  const [trainerName, setTrainerName] = useState('');
-  const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [stats, setStats] = useState({ STR: '', DEX: '', CON: '', INT: '', WIS: '', CHA: '' });
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+// NEW: Added initialData and onCancel props so we can edit existing trainers!
+export default function TrainerForm({ 
+  initialData,
+  onSave,
+  onCancel
+}: { 
+  initialData?: any;
+  onSave: (data: any) => void;
+  onCancel?: () => void;
+}) {
+  const [trainerName, setTrainerName] = useState(initialData?.name || '');
+  const [selectedSpecialty, setSelectedSpecialty] = useState(initialData?.specialty || '');
+  
+  // Initialize with existing stats if editing, otherwise empty strings
+  const [stats, setStats] = useState(initialData?.stats || { STR: '', DEX: '', CON: '', INT: '', WIS: '', CHA: '' });
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialData?.skills || []);
 
   const specialties = {
     'Ace Trainer': 'Once per combat, your Pokémon can use a move as a Bonus Action.',
@@ -15,7 +25,6 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
     'Commander': 'Use your Action to grant your active Pokémon Advantage on its next attack.'
   };
 
-  const standardArray = ['15', '14', '13', '12', '10', '8'];
   const statNames = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
   
   const allSkills = [
@@ -26,7 +35,10 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
   ];
 
   const handleStatChange = (statName: string, value: string) => {
-    setStats({ ...stats, [statName]: value });
+    // Only allow numbers to be typed
+    if (value === '' || /^\d+$/.test(value)) {
+      setStats({ ...stats, [statName]: value });
+    }
   };
 
   const handleSkillToggle = (skill: string) => {
@@ -37,7 +49,6 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
     }
   };
 
-  // NEW: Packages up all your choices and sends them to the main app
   const handleSubmit = () => {
     onSave({
       name: trainerName,
@@ -48,10 +59,13 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
     });
   };
 
+  // Check if any stat is empty to disable the save button
+  const isFormIncomplete = !trainerName || !selectedSpecialty || Object.values(stats).some(val => val === '') || selectedSkills.length < 3;
+
   return (
     <div className="bg-slate-800 p-6 rounded-lg shadow-lg w-full max-w-2xl mt-8 border border-slate-700 text-slate-200">
       <h2 className="text-2xl font-bold text-blue-400 mb-6 border-b border-slate-600 pb-2">
-        Create Your Trainer
+        {initialData ? 'Update Trainer Stats' : 'Create Your Trainer'}
       </h2>
       
       <div className="flex flex-col gap-6">
@@ -90,22 +104,21 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
         <hr className="border-slate-600" />
 
         <div>
-          <label className="block font-semibold mb-3">Core Stats (Standard Array)</label>
+          <label className="block font-semibold mb-3">Core Stats (Manual Entry / Rolls)</label>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {statNames.map(stat => (
               <div key={stat} className="flex flex-col items-center bg-slate-900 p-2 rounded-md border border-slate-700">
                 <span className="font-bold text-slate-400 text-sm mb-1">{stat}</span>
-                <select 
-                  className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-center focus:outline-none focus:border-blue-500"
+                {/* NEW: Changed from <select> to <input type="number"> */}
+                <input 
+                  type="number"
+                  min="1"
+                  max="30"
+                  className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-center font-bold focus:outline-none focus:border-blue-500"
                   value={stats[stat as keyof typeof stats]}
                   onChange={(e) => handleStatChange(stat, e.target.value)}
-                >
-                  <option value=""></option>
-                  {standardArray.map(val => {
-                    const isUsed = Object.values(stats).includes(val) && stats[stat as keyof typeof stats] !== val;
-                    return <option key={val} value={val} disabled={isUsed}>{val}</option>;
-                  })}
-                </select>
+                  placeholder="10"
+                />
               </div>
             ))}
           </div>
@@ -140,14 +153,25 @@ export default function TrainerForm({ onSave }: { onSave: (data: any) => void })
           </div>
         </div>
 
-        {/* NEW: Added the onClick event to trigger the save! */}
-        <button 
-          onClick={handleSubmit}
-          className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-md mt-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!trainerName || !selectedSpecialty || Object.values(stats).includes('') || selectedSkills.length < 3}
-        >
-          Save Trainer to Roster
-        </button>
+        <div className="flex gap-3 mt-4">
+          <button 
+            onClick={handleSubmit}
+            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isFormIncomplete}
+          >
+            {initialData ? 'Save Updates' : 'Save Trainer to Roster'}
+          </button>
+          
+          {/* NEW: Cancel button if we are in edit mode */}
+          {onCancel && (
+            <button 
+              onClick={onCancel}
+              className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-4 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
